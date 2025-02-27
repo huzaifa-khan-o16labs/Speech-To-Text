@@ -16,6 +16,7 @@ def load_text_file(file_path: str) -> List[Document]:
     return loader.load()
 
 def load_document(file_path: str) -> List[Document]:
+    print('loading transcript')
     if file_path.endswith('.txt'):
         return load_text_file(file_path)
     else:
@@ -23,13 +24,13 @@ def load_document(file_path: str) -> List[Document]:
     
 def genarate_action_points(text_docs):
     # Extract the text content from the document
+    print('generating action points')
     response=llm.invoke(f'This is the transcript from the meeting {text_docs[0].page_content}. Can you generate the action points from this text.And keep focus on every small detail in the transcript.')
     action_points=(response.content)
-    print(action_points)
-
     return action_points
 
 def save_action_points(action_points,name):
+    print("Saving action points...")
     with open(f"{name}_action_points.md", "w",encoding='utf-8') as file:
         file.write(action_points)
     print("Action points saved to formatted_action_points.md")
@@ -41,6 +42,7 @@ def extract_audio_from_video(video_path, audio_output_path):
     audio_clip.write_audiofile(audio_output_path)
 
 def transcribe_audio(audio_path, model_size="base"):
+    print("Transcribing audio...")
        
     model = whisper.load_model(model_size)
         
@@ -50,12 +52,13 @@ def transcribe_audio(audio_path, model_size="base"):
         
 def save_transcript(transcript, output_file):
     """Save the transcript in a readable format"""
+    print("Saving transcript...")
     with open(output_file, 'w', encoding='utf-8') as f:
         # Write plain text format
         f.write(transcript)
 
 def video_to_text(output_text_path=None, model_size="base"):
-    video_path="test_video.mp4"
+    video_path="video1475546927.mp4"
     intermediate_audio_path = "extracted_audio.wav"
     print(video_path[:-4])
     output_text_path=f"{video_path[:-4]}_transcription.txt"
