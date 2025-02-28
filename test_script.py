@@ -10,10 +10,6 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import re
-from flask import Flask, request, jsonify, send_file
-
-app = Flask(__name__)
-
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
@@ -110,7 +106,7 @@ def save_action_points(action_points,name):
     # Save the document
    
     doc.save(f'{name}.docx')
-    print(f"Action points saved to {name}.docx")
+    print("Action points saved to formatted_action_points.md")
 
 
 def extract_audio_from_video(video_path, audio_output_path):
@@ -134,17 +130,13 @@ def save_transcript(transcript, output_file):
         # Write plain text format
         f.write(transcript)
 
-@app.route('/video_to_text', methods=['POST'])
 def video_to_text(output_text_path=None, model_size="base"):
-    # video_path="video1475546927.mp4"
-    video_path= request.files['video']
-    file_name=video_path.filename
+    video_path="video1475546927.mp4"
     intermediate_audio_path = "extracted_audio.wav"
-    print(file_name)
-    print(file_name[:-4])
-    output_text_path=f"{file_name[:-4]}_transcription.txt"
+    print(video_path[:-4])
+    output_text_path=f"{video_path[:-4]}_transcription.txt"
 
-    extract_audio_from_video(file_name, intermediate_audio_path)
+    extract_audio_from_video(video_path, intermediate_audio_path)
     result=transcribe_audio(intermediate_audio_path, model_size)
     save_transcript(result, output_text_path)
     if os.path.exists(intermediate_audio_path):
@@ -152,11 +144,8 @@ def video_to_text(output_text_path=None, model_size="base"):
 
     text_docs = load_document(output_text_path)
     action_points=genarate_action_points(text_docs)
-    save_action_points(action_points,file_name[:-4])
-
-
-    return jsonify({"status":'success',})
+    save_action_points(action_points,video_path[:-4])
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    main()
