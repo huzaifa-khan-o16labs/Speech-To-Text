@@ -10,7 +10,8 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import re
-from flask import Flask, request, jsonify, send_file
+from fpdf import FPDF
+from flask import Flask, request, jsonify, send_file,render_template,flash
 
 app = Flask(__name__)
 
@@ -37,7 +38,7 @@ def genarate_action_points(text_docs):
     action_points=(response.content)
     return action_points
 
-def save_action_points(action_points,name):
+def save_action_points_word(action_points,name):
     print("Saving action points...")
     doc = Document()
     
@@ -109,8 +110,18 @@ def save_action_points(action_points,name):
     
     # Save the document
    
-    doc.save(f'{name}.docx')
+    doc.save(f'{name}_action_points.docx')
     print(f"Action points saved to {name}.docx")
+
+def save_action_points_pdf(action_points,name):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=8)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.multi_cell(0, 8, action_points)  # Add action points
+    pdf.output(f'{name}_action_points.pdf')
+    print(f"PDF saved as {name}")
 
 
 def extract_audio_from_video(video_path, audio_output_path):
@@ -134,29 +145,62 @@ def save_transcript(transcript, output_file):
         # Write plain text format
         f.write(transcript)
 
-@app.route('/video_to_text', methods=['POST'])
+@app.route('/video_to_text', methods=['POST', 'GET'])
 def video_to_text(output_text_path=None, model_size="base"):
+    global name
     # video_path="video1475546927.mp4"
-    video_path= request.files['video']
-    file_name=video_path.filename
-    intermediate_audio_path = "extracted_audio.wav"
-    print(file_name)
-    print(file_name[:-4])
-    output_text_path=f"{file_name[:-4]}_transcription.txt"
-
-    extract_audio_from_video(file_name, intermediate_audio_path)
-    result=transcribe_audio(intermediate_audio_path, model_size)
-    save_transcript(result, output_text_path)
-    if os.path.exists(intermediate_audio_path):
-        os.remove(intermediate_audio_path)
-
-    text_docs = load_document(output_text_path)
-    action_points=genarate_action_points(text_docs)
-    save_action_points(action_points,file_name[:-4])
+    if request.method == 'POST':
+        video_path= request.files['video']
+        file_name=video_path.filename
+        intermediate_audio_path = "extracted_audio.wav"
+        print(file_name)
+        name=file_name[:-4]
+        output_text_path=f"{file_name[:-4]}_transcription.txt"
+        if file_name.endswith('.mp4'):
+            extract_audio_from_video(file_name, intermediate_audio_path)
+        else:
+            flash("Invalid file format. Please upload a video file")
 
 
-    return jsonify({"status":'success',})
+        result=transcribe_audio(intermediate_audio_path, model_size)
+        save_transcript(result, output_text_path)
+        if os.path.exists(intermediate_audio_path):
+            os.remove(intermediate_audio_path)
 
+        text_docs = load_document(output_text_path)
+        action_points=genarate_action_points(text_docs)
+        save_action_points_word(action_points,name)
+        save_action_points_pdf(action_points,name)
+        data={"status":'success','action_points':action_points}
+
+
+        return jsonify(data)
+    return render_template('index.html')
+
+
+@app.route('/download_word', methods=['GET'])
+def download_word():
+    file_path = f"{name}_action_points.docx"  # Ensure this path is correct
+    return send_file(file_path, 
+                     as_attachment=True, 
+                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+@app.route('/download_pdf')
+def download_pdf():
+        # Path to your PDF file
+    pdf_path = f'{name}_action_points.pdf'
+        
+        # Check if file exists
+    if not os.path.exists(pdf_path):
+        return jsonify({'error': 'File not found'}), 404
+        
+        # Send the file
+    return send_file(
+            pdf_path, 
+            mimetype='application/pdf', 
+            as_attachment=True, 
+            
+        )
 
 if __name__ == "__main__":
     app.run(debug=True)
