@@ -202,9 +202,5 @@ def download_pdf():
             
         )
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 49ca32dca8ef83399db1c13dafe5c8d4a5a79e91
 if __name__ == "__main__":
     app.run(debug=True)
